@@ -102,23 +102,26 @@ public class ServicePasswordCallbackHandler implements CallbackHandler {
                         case WSPasswordCallback.USERNAME_TOKEN_UNKNOWN:
 
                             receivedPasswd = passwordCallback.getPassword();
-                            try {
-                                if (receivedPasswd != null
-                                        && this.authenticateUser(username, receivedPasswd)) {
-
-                                    String domainName = UserCoreUtil.getDomainFromThreadLocal();
-                                    String usernameWithDomain = IdentityUtil.addDomainToName(username, domainName);
-                                    if (log.isDebugEnabled()) {
-                                        log.debug("Updating username with userstore domain. Updated username is :" +
-                                                usernameWithDomain);
+                            if (receivedPasswd != null)
+                            {
+                                try {
+                                    if (this.authenticateUser(username, receivedPasswd)) {
+                                        String domainName = UserCoreUtil.getDomainFromThreadLocal();
+                                        String usernameWithDomain = IdentityUtil.addDomainToName(username, domainName);
+                                        if (log.isDebugEnabled()) {
+                                            log.debug("Updating username with userstore domain. Updated username is :" +
+                                                    usernameWithDomain);
+                                        }
+                                        passwordCallback.setIdentifier(usernameWithDomain);
+                                    } else {
+                                        throw new UnsupportedCallbackException(callbacks[i], "user authentication failed");
                                     }
-                                    passwordCallback.setIdentifier(usernameWithDomain);
-                                } else {
-                                    throw new UnsupportedCallbackException(callbacks[i], "check failed");
+                                } catch (Exception e) {
+                                    throw new UnsupportedCallbackException(callbacks[i],
+                                            "Check failed : System error : " + e.getMessage());
                                 }
-                            } catch (Exception e) {
-                                throw new UnsupportedCallbackException(callbacks[i],
-                                        "Check failed : System error : " + e.getMessage());
+                            } else {
+                                throw new UnsupportedCallbackException(callbacks[i], "Received password is null");
                             }
 
                             break;
@@ -251,6 +254,9 @@ public class ServicePasswordCallbackHandler implements CallbackHandler {
                     tenantAwareUserName, password);
 
             if (isAuthenticated) {
+                if (log.isDebugEnabled()) {
+                    log.debug("User : " + user + " has been authenticated with tenant " + realm.getUserStoreManager().getTenantId());
+                }
 
                 int index = tenantAwareUserName.indexOf("/");
                 if (index < 0) {
@@ -264,11 +270,16 @@ public class ServicePasswordCallbackHandler implements CallbackHandler {
                         .isUserAuthorized(tenantAwareUserName,
                                 serviceGroupId + "/" + serviceId,
                                 UserCoreConstants.INVOKE_SERVICE_PERMISSION);
+                if (!isAuthorized && log.isDebugEnabled()) {
+                    log.debug("User : " + user + " could not be authorized with tenant " + realm.getUserStoreManager().getTenantId());
+                }
+            } else if (log.isDebugEnabled()) {
+                log.debug("User : " + user + " could not be authenticated with tenant " + realm.getUserStoreManager().getTenantId());
             }
 
             return isAuthorized;
         } catch (Exception e) {
-            log.error("Error in authenticating user.", e);
+            log.error("Error in authenticating or authorizing user.", e);
             throw e;
         }
     }
