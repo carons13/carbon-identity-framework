@@ -118,7 +118,7 @@ public class ServicePasswordCallbackHandler implements CallbackHandler {
                                 }
                             } catch (Exception e) {
                                 throw new UnsupportedCallbackException(callbacks[i],
-                                        "Check failed : System error");
+                                        "Check failed : System error : " + e.getMessage());
                             }
 
                             break;
